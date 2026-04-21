@@ -7,13 +7,13 @@ struct BufI32 {
 }
 
 @group(0) @binding(0)
-var<storage, read_write> global: BufU32;
+var<storage, read> global: BufU32;
 
 @group(0) @binding(1)
-var<storage, read_write> compacted: BufU32;
+var<storage, read> compacted: BufU32;
 
 @group(0) @binding(2)
-var<storage, read_write> depths: BufI32;
+var<storage, read> depths: BufI32;
 
 @group(0) @binding(3)
 var<storage, read_write> parents: BufI32;

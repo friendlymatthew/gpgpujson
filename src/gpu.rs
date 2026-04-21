@@ -97,7 +97,7 @@ impl Gpu {
         &self,
         shader_src: &str,
         entry_point: &str,
-        buffers: &[&wgpu::Buffer],
+        buffers: &[(&wgpu::Buffer, bool)],
         workgroups: u32,
     ) {
         let module = self
@@ -110,11 +110,11 @@ impl Gpu {
         let bind_group_layout_entries = buffers
             .iter()
             .enumerate()
-            .map(|(i, _)| wgpu::BindGroupLayoutEntry {
+            .map(|(i, &(_, read_only))| wgpu::BindGroupLayoutEntry {
                 binding: i.try_into().unwrap(),
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    ty: wgpu::BufferBindingType::Storage { read_only },
                     has_dynamic_offset: false,
                     min_binding_size: None,
                 },
@@ -151,7 +151,7 @@ impl Gpu {
         let bind_group_entries = buffers
             .iter()
             .enumerate()
-            .map(|(i, buf)| wgpu::BindGroupEntry {
+            .map(|(i, (buf, _))| wgpu::BindGroupEntry {
                 binding: i.try_into().unwrap(),
                 resource: buf.as_entire_binding(),
             })
@@ -220,7 +220,7 @@ impl Gpu {
         propagate_shader: &str,
     ) {
         if n <= 256 {
-            self.dispatch(single_shader, "main", &[buf], 1);
+            self.dispatch(single_shader, "main", &[(buf, false)], 1);
             return;
         }
 
@@ -241,18 +241,18 @@ impl Gpu {
             let n_wg = level_sizes[i + 1];
 
             if n_wg == 1 {
-                self.dispatch(single_shader, "main", &[data], 1);
+                self.dispatch(single_shader, "main", &[(data, false)], 1);
             } else {
                 self.dispatch(
                     local_shader,
                     "main",
-                    &[data, &totals[i]],
+                    &[(data, false), (&totals[i], false)],
                     n_wg.try_into().unwrap(),
                 );
             }
         }
 
-        self.dispatch(single_shader, "main", &[totals.last().unwrap()], 1);
+        self.dispatch(single_shader, "main", &[(totals.last().unwrap(), false)], 1);
 
         for i in (0..totals.len()).rev() {
             let data = if i == 0 { buf } else { &totals[i - 1] };
@@ -260,7 +260,7 @@ impl Gpu {
             self.dispatch(
                 propagate_shader,
                 "main",
-                &[data, &totals[i]],
+                &[(data, false), (&totals[i], true)],
                 n_wg.try_into().unwrap(),
             );
         }
@@ -280,7 +280,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_u32.wgsl"),
             "main",
-            &[&buf],
+            &[(&buf, false)],
             1 << 4,
         );
 
@@ -307,7 +307,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_fsm.wgsl"),
             "main",
-            &[&input_buf, &output_buf],
+            &[(&input_buf, true), (&output_buf, false)],
             1,
         );
 
@@ -339,7 +339,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_fsm.wgsl"),
             "main",
-            &[&input_buf, &output_buf],
+            &[(&input_buf, true), (&output_buf, false)],
             1,
         );
 
@@ -374,7 +374,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_fsm.wgsl"),
             "main",
-            &[&input_buf, &fsm_buf],
+            &[(&input_buf, true), (&fsm_buf, false)],
             1,
         );
 
@@ -384,7 +384,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_compact.wgsl"),
             "main",
-            &[&input_buf, &fsm_buf, &compact_buf],
+            &[(&input_buf, true), (&fsm_buf, true), (&compact_buf, false)],
             1,
         );
 
@@ -394,7 +394,11 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_depth.wgsl"),
             "main",
-            &[&input_buf, &compact_buf, &depth_buf],
+            &[
+                (&input_buf, true),
+                (&compact_buf, true),
+                (&depth_buf, false),
+            ],
             1,
         );
 
@@ -446,7 +450,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/sort.wgsl"),
             "main",
-            &[&depth_buf, &pos_buf],
+            &[(&depth_buf, false), (&pos_buf, false)],
             1,
         );
 
@@ -484,7 +488,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_fsm.wgsl"),
             "main",
-            &[&input_buf, &fsm_buf],
+            &[(&input_buf, true), (&fsm_buf, false)],
             1,
         );
 
@@ -494,7 +498,7 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_compact.wgsl"),
             "main",
-            &[&input_buf, &fsm_buf, &compact_buf],
+            &[(&input_buf, true), (&fsm_buf, true), (&compact_buf, false)],
             1,
         );
 
@@ -504,7 +508,11 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/scan_depth.wgsl"),
             "main",
-            &[&input_buf, &compact_buf, &depth_buf],
+            &[
+                (&input_buf, true),
+                (&compact_buf, true),
+                (&depth_buf, false),
+            ],
             1,
         );
 
@@ -514,7 +522,12 @@ mod tests {
         gpu.dispatch(
             include_str!("shaders/parent_link.wgsl"),
             "main",
-            &[&input_buf, &compact_buf, &depth_buf, &parent_buf],
+            &[
+                (&input_buf, true),
+                (&compact_buf, true),
+                (&depth_buf, true),
+                (&parent_buf, false),
+            ],
             1,
         );
 

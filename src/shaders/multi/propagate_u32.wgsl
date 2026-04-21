@@ -6,7 +6,7 @@ struct BufU32 {
 var<storage, read_write> data: BufU32;
 
 @group(0) @binding(1)
-var<storage, read_write> totals: BufU32;
+var<storage, read> totals: BufU32;
 
 @compute
 @workgroup_size(256)

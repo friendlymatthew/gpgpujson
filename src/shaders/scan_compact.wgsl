@@ -4,7 +4,7 @@ struct DataBuf {
 
 @group(0)
 @binding(0)
-var<storage, read_write> global: DataBuf;
+var<storage, read> global: DataBuf;
 
 struct FsmBuf {
     data: array<vec3<u32>>,
@@ -12,7 +12,7 @@ struct FsmBuf {
 
 @group(0)
 @binding(1)
-var<storage, read_write> fsm: FsmBuf;
+var<storage, read> fsm: FsmBuf;
 
 @group(0)
 @binding(2)

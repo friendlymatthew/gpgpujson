@@ -7,7 +7,7 @@ struct FsmBuf {
 }
 
 @group(0) @binding(0)
-var<storage, read_write> input: BufU32;
+var<storage, read> input: BufU32;
 
 @group(0) @binding(1)
 var<storage, read_write> output: FsmBuf;

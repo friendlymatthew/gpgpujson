@@ -4,13 +4,13 @@ struct DataBuf {
 
 @group(0)
 @binding(0)
-var<storage, read_write> global: DataBuf;
+var<storage, read> global: DataBuf;
 
 
 
 @group(0)
 @binding(1)
-var<storage, read_write> compacted: DataBuf;
+var<storage, read> compacted: DataBuf;
 
 
 struct OutputBuf {

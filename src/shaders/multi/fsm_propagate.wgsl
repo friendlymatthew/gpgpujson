@@ -7,7 +7,7 @@ struct FsmBuf {
 var<storage, read_write> output: FsmBuf;
 
 @group(0) @binding(1)
-var<storage, read_write> totals: FsmBuf;
+var<storage, read> totals: FsmBuf;
 
 fn compose(lhs: vec3<u32>, rhs: vec3<u32>) -> vec3<u32> {
     return vec3(rhs[lhs[0]], rhs[lhs[1]], rhs[lhs[2]]);

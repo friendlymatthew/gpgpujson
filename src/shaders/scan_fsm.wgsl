@@ -4,7 +4,7 @@ struct ReadBuf {
 
 @group(0)
 @binding(0)
-var<storage, read_write> global: ReadBuf;
+var<storage, read> global: ReadBuf;
 
 struct OutputBuf {
     data: array<vec3<u32>>,

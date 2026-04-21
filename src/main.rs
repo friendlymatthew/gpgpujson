@@ -24,7 +24,7 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     gpu.dispatch(
         include_str!("shaders/multi/map_fsm.wgsl"),
         "main",
-        &[&input_buf, &fsm_buf],
+        &[(&input_buf, true), (&fsm_buf, false)],
         n_wg.try_into().unwrap(),
     );
 
@@ -34,7 +34,7 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     gpu.dispatch(
         include_str!("shaders/multi/map_compact_mask.wgsl"),
         "main",
-        &[&input_buf, &fsm_buf, &mask_buf],
+        &[(&input_buf, true), (&fsm_buf, true), (&mask_buf, false)],
         n_wg.try_into().unwrap(),
     );
 
@@ -51,7 +51,7 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     gpu.dispatch(
         include_str!("shaders/multi/scatter_compact.wgsl"),
         "main",
-        &[&mask_copy, &mask_buf, &compact_buf],
+        &[(&mask_copy, true), (&mask_buf, true), (&compact_buf, false)],
         n_wg.try_into().unwrap(),
     );
 
@@ -64,7 +64,11 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     gpu.dispatch(
         include_str!("shaders/multi/map_depth.wgsl"),
         "main",
-        &[&input_buf, &compact_buf, &depth_buf],
+        &[
+            (&input_buf, true),
+            (&compact_buf, true),
+            (&depth_buf, false),
+        ],
         struct_wg.try_into().unwrap(),
     );
 
@@ -74,7 +78,12 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     gpu.dispatch(
         include_str!("shaders/multi/parent_link.wgsl"),
         "main",
-        &[&input_buf, &compact_buf, &depth_buf, &parent_buf],
+        &[
+            (&input_buf, true),
+            (&compact_buf, true),
+            (&depth_buf, true),
+            (&parent_buf, false),
+        ],
         struct_wg.try_into().unwrap(),
     );
 
@@ -85,7 +94,13 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     gpu.dispatch(
         include_str!("shaders/multi/assemble_tape.wgsl"),
         "main",
-        &[&input_buf, &compact_buf, &depth_buf, &parent_buf, &tape_buf],
+        &[
+            (&input_buf, true),
+            (&compact_buf, true),
+            (&depth_buf, true),
+            (&parent_buf, true),
+            (&tape_buf, false),
+        ],
         struct_wg.try_into().unwrap(),
     );
 
