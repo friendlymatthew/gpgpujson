@@ -336,6 +336,7 @@ dependencies = [
 name = "gpgpujson"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bytemuck",
  "env_logger",
  "futures-intrusive",

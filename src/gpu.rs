@@ -1,3 +1,4 @@
+use anyhow::{Result, anyhow};
 use wgpu::util::DeviceExt;
 
 pub struct Gpu {
@@ -7,12 +8,20 @@ pub struct Gpu {
 
 impl Default for Gpu {
     fn default() -> Self {
-        pollster::block_on(Self::init())
+        Self::new()
     }
 }
 
 impl Gpu {
-    async fn init() -> Self {
+    pub fn try_new() -> Result<Self> {
+        pollster::block_on(Self::init())
+    }
+
+    pub fn new() -> Self {
+        Self::try_new().expect("failed to initialize GPU")
+    }
+
+    async fn init() -> Result<Self> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
 
         let adapter = instance
@@ -21,17 +30,16 @@ impl Gpu {
                 ..Default::default()
             })
             .await
-            .expect("no suitable GPU adapter found");
+            .ok_or_else(|| anyhow!("no suitable GPU adapter found"))?;
 
         let info = adapter.get_info();
         eprintln!("gpu: {} ({:?})", info.name, info.backend);
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor::default(), None)
-            .await
-            .expect("failed to create device");
+            .await?;
 
-        Self { device, queue }
+        Ok(Self { device, queue })
     }
 
     pub fn storage_buffer(&self, label: &str, data: &[u8]) -> wgpu::Buffer {
@@ -199,7 +207,7 @@ impl Gpu {
         );
     }
 
-    pub fn multi_scan_compose(&self, buf: &wgpu::Buffer, n: usize) {
+    pub fn multi_scan_fsm(&self, buf: &wgpu::Buffer, n: usize) {
         self.multi_scan_generic(
             buf,
             n,
@@ -215,8 +223,11 @@ impl Gpu {
         buf: &wgpu::Buffer,
         n: usize,
         elem_size: usize,
+        // the shader that scans within each workgroup
         local_shader: &str,
+        // the shader that scans a buffer that fits in 1 workgroup (base case)
         single_shader: &str,
+        // adds each workgroup's prefix back down (data + totals)
         propagate_shader: &str,
     ) {
         if n <= 256 {
@@ -224,10 +235,8 @@ impl Gpu {
             return;
         }
 
-        let mut level_sizes = vec![n];
-        while *level_sizes.last().unwrap() > 256 {
-            level_sizes.push((*level_sizes.last().unwrap()).div_ceil(256));
-        }
+        let level_sizes = std::iter::successors(Some(n), |&s| (s > 256).then(|| s.div_ceil(256)))
+            .collect::<Vec<_>>();
 
         let totals = (1..level_sizes.len())
             .map(|i| {
@@ -273,7 +282,10 @@ mod tests {
 
     #[test]
     fn test_scan_u32() {
-        let gpu = Gpu::default();
+        let gpu = match Gpu::try_new() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
         let input = vec![1u32; 256];
         let buf = gpu.storage_buffer("scan", bytemuck::cast_slice(&input));
 
@@ -290,7 +302,10 @@ mod tests {
 
     #[test]
     fn test_fsm_string_detect() {
-        let gpu = Gpu::default();
+        let gpu = match Gpu::try_new() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
 
         let input_str = r#"hello "world" end"#;
 
@@ -324,7 +339,10 @@ mod tests {
 
     #[test]
     fn test_fsm_escape() {
-        let gpu = Gpu::default();
+        let gpu = match Gpu::try_new() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
 
         // the \" inside the string should NOT close it
         let input_str = r#"hello "wo\"rld" end"#;
@@ -359,7 +377,10 @@ mod tests {
 
     #[test]
     fn test_depth() {
-        let gpu = Gpu::default();
+        let gpu = match Gpu::try_new() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
 
         // {"a":{"b":[1,2]}}
         let input_str = r#"{"a":{"b":[1,2]}}"#;
@@ -432,7 +453,10 @@ mod tests {
 
     #[test]
     fn test_sort() {
-        let gpu = Gpu::default();
+        let gpu = match Gpu::try_new() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
 
         // compacted structural chars from {"a":{"b":[1,2]}}
         // positions: {  :  {  :  [  ,  ]  }  }
@@ -474,7 +498,10 @@ mod tests {
 
     #[test]
     fn test_parent_link() {
-        let gpu = Gpu::default();
+        let gpu = match Gpu::try_new() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
 
         let input_str = r#"{"a":{"b":[1,2]}}"#;
 

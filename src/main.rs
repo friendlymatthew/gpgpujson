@@ -28,7 +28,7 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
         n_wg.try_into().unwrap(),
     );
 
-    gpu.multi_scan_compose(&fsm_buf, padded_len);
+    gpu.multi_scan_fsm(&fsm_buf, padded_len);
 
     let mask_buf = gpu.storage_buffer_empty("mask", buf_size(4));
     gpu.dispatch(
