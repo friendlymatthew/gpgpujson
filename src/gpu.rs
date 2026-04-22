@@ -179,7 +179,7 @@ impl Gpu {
             let mut cpass = encoder.begin_compute_pass(&Default::default());
             cpass.set_pipeline(&pipeline);
             cpass.set_bind_group(0, &bind_group, &[]);
-            cpass.dispatch_workgroups(workgroups, 1, 2);
+            cpass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         self.queue.submit(Some(encoder.finish()));
