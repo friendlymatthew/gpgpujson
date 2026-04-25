@@ -1,12 +1,8 @@
-struct BufI32 {
-    data: array<i32>,
-}
-
 @group(0) @binding(0)
-var<storage, read_write> data: BufI32;
+var<storage, read_write> data: array<i32>;
 
 @group(0) @binding(1)
-var<storage, read> totals: BufI32;
+var<storage, read> totals: array<i32>;
 
 @compute
 @workgroup_size(256)
@@ -19,5 +15,5 @@ fn main(
     }
 
     let gid = wg_id.x * 256u + local_id.x;
-    data.data[gid] += totals.data[wg_id.x - 1u];
+    data[gid] += totals[wg_id.x - 1u];
 }

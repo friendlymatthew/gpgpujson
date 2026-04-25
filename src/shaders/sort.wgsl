@@ -1,18 +1,10 @@
-struct BufU32 {
-    data: array<u32>,
-}
-
-struct BufI32 {
-    data: array<i32>
-}
-
 @group(0)
 @binding(0)
-var<storage, read_write> depths: BufI32;
+var<storage, read_write> depths: array<i32>;
 
 @group(0)
 @binding(1)
-var<storage, read_write> positions: BufU32;
+var<storage, read_write> positions: array<u32>;
 
 var<workgroup> scratch_depths: array<i32, 256>;
 var<workgroup> scratch_positions: array<u32, 256>;
@@ -20,9 +12,9 @@ var<workgroup> scratch_positions: array<u32, 256>;
 @compute
 @workgroup_size(256)
 fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
-    scratch_depths[local_id.x] = depths.data[local_id.x];
-    scratch_positions[local_id.x] = positions.data[local_id.x];
-    
+    scratch_depths[local_id.x] = depths[local_id.x];
+    scratch_positions[local_id.x] = positions[local_id.x];
+
     workgroupBarrier();
 
     for (var k = 2u; k <= 256u; k *= 2u) {
@@ -52,6 +44,6 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
         }
     }
 
-    depths.data[local_id.x] = scratch_depths[local_id.x];
-    positions.data[local_id.x] = scratch_positions[local_id.x];
+    depths[local_id.x] = scratch_depths[local_id.x];
+    positions[local_id.x] = scratch_positions[local_id.x];
 }

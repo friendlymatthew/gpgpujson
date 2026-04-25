@@ -293,7 +293,7 @@ mod tests {
             include_str!("shaders/scan_u32.wgsl"),
             "main",
             &[(&buf, false)],
-            1 << 4,
+            1,
         );
 
         let out = gpu.read_buffer_as::<u32>(&buf);
@@ -309,10 +309,10 @@ mod tests {
 
         let input_str = r#"hello "world" end"#;
 
-        let mut input = input_str.bytes().map(u32::from).collect::<Vec<_>>();
+        let mut input = input_str.bytes().collect::<Vec<u8>>();
         input.resize(256, 0);
 
-        let input_buf = gpu.storage_buffer("fsm_in", bytemuck::cast_slice(&input));
+        let input_buf = gpu.storage_buffer("fsm_in", &input);
         let output_buf = gpu.storage_buffer_empty(
             "fsm_out",
             // vec3 is padded to 16 bytes in storage
@@ -347,10 +347,10 @@ mod tests {
         // the \" inside the string should NOT close it
         let input_str = r#"hello "wo\"rld" end"#;
 
-        let mut input = input_str.bytes().map(u32::from).collect::<Vec<_>>();
+        let mut input = input_str.bytes().collect::<Vec<u8>>();
         input.resize(256, 0);
 
-        let input_buf = gpu.storage_buffer("fsm_in", bytemuck::cast_slice(&input));
+        let input_buf = gpu.storage_buffer("fsm_in", &input);
         let output_buf =
             gpu.storage_buffer_empty("fsm_out", (256 * std::mem::size_of::<[u32; 4]>()) as u64);
 
@@ -385,10 +385,10 @@ mod tests {
         // {"a":{"b":[1,2]}}
         let input_str = r#"{"a":{"b":[1,2]}}"#;
 
-        let mut input = input_str.bytes().map(u32::from).collect::<Vec<_>>();
+        let mut input = input_str.bytes().collect::<Vec<u8>>();
         input.resize(256, 0);
 
-        let input_buf = gpu.storage_buffer("bytes", bytemuck::cast_slice(&input));
+        let input_buf = gpu.storage_buffer("bytes", &input);
         let fsm_buf =
             gpu.storage_buffer_empty("fsm", (256 * std::mem::size_of::<[u32; 4]>()) as u64);
 
@@ -505,10 +505,10 @@ mod tests {
 
         let input_str = r#"{"a":{"b":[1,2]}}"#;
 
-        let mut input = input_str.bytes().map(u32::from).collect::<Vec<_>>();
+        let mut input = input_str.bytes().collect::<Vec<u8>>();
         input.resize(256, 0);
 
-        let input_buf = gpu.storage_buffer("bytes", bytemuck::cast_slice(&input));
+        let input_buf = gpu.storage_buffer("bytes", &input);
         let fsm_buf =
             gpu.storage_buffer_empty("fsm", (256 * std::mem::size_of::<[u32; 4]>()) as u64);
 

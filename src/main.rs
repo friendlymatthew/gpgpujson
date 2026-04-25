@@ -14,10 +14,10 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
     let n_wg = n.div_ceil(256).max(1);
     let padded_len = n_wg * 256;
 
-    let mut input = json.bytes().map(u32::from).collect::<Vec<_>>();
+    let mut input = json.bytes().collect::<Vec<u8>>();
     input.resize(padded_len, 0);
 
-    let input_buf = gpu.storage_buffer("bytes", bytemuck::cast_slice(&input));
+    let input_buf = gpu.storage_buffer("bytes", &input);
     let buf_size = |elem_size: usize| -> u64 { (padded_len * elem_size) as u64 };
 
     let fsm_buf = gpu.storage_buffer_empty("fsm", buf_size(16));

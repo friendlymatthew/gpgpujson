@@ -1,18 +1,14 @@
-struct ReadBuf {
-    data: array<u32>,
-}
-
 @group(0)
 @binding(0)
-var<storage, read> global: ReadBuf;
+var<storage, read> global: array<u32>;
 
-struct OutputBuf {
-    data: array<vec3<u32>>,
+fn read_byte(idx: u32) -> u32 {
+    return (global[idx / 4u] >> ((idx % 4u) * 8u)) & 0xFFu;
 }
 
 @group(0)
 @binding(1)
-var<storage, read_write> output: OutputBuf;
+var<storage, read_write> output: array<vec3<u32>>;
 
 var<workgroup> scratch: array<vec3<u32>, 256>;
 
@@ -31,7 +27,7 @@ h -> (0, 1, 1)
 " => (1, 0, 1)
 w => (0, 1, 1)
 
-compose(h, ") means starting from state S, go through h to get h[S], then feed that into "[h[s]] 
+compose(h, ") means starting from state S, go through h to get h[S], then feed that into "[h[s]]
 */
 fn compose(lhs: vec3<u32>, rhs: vec3<u32>) -> vec3<u32> {
     return vec3(rhs[lhs[0]], rhs[lhs[1]], rhs[lhs[2]]);
@@ -44,7 +40,7 @@ const ESACPE = 0x5Cu;
 @workgroup_size(256)
 fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
 
-    switch global.data[local_id.x] {
+    switch read_byte(local_id.x) {
         case QUOTE {
             scratch[local_id.x] = vec3<u32>(1, 0, 1);
         }
@@ -74,5 +70,5 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
     }
 
 
-    output.data[local_id.x] = scratch[local_id.x];
+    output[local_id.x] = scratch[local_id.x];
 }

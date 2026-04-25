@@ -1,19 +1,15 @@
-struct BufU32 {
-    data: array<u32>,
-}
-
-struct BufI32 {
-    data: array<i32>,
-}
-
 @group(0) @binding(0)
-var<storage, read> input: BufU32;
+var<storage, read> input: array<u32>;
 
 @group(0) @binding(1)
-var<storage, read> compacted: BufU32;
+var<storage, read> compacted: array<u32>;
 
 @group(0) @binding(2)
-var<storage, read_write> output: BufI32;
+var<storage, read_write> output: array<i32>;
+
+fn read_byte(idx: u32) -> u32 {
+    return (input[idx / 4u] >> ((idx % 4u) * 8u)) & 0xFFu;
+}
 
 @compute
 @workgroup_size(256)
@@ -22,8 +18,8 @@ fn main(
     @builtin(workgroup_id) wg_id: vec3<u32>,
 ) {
     let gid = wg_id.x * 256u + local_id.x;
-    let pos = compacted.data[gid];
-    let b = input.data[pos];
+    let pos = compacted[gid];
+    let b = read_byte(pos);
 
     var delta: i32 = 0;
     switch b {
@@ -36,5 +32,5 @@ fn main(
         default {}
     }
 
-    output.data[gid] = delta;
+    output[gid] = delta;
 }

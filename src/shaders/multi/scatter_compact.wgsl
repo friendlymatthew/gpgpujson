@@ -1,15 +1,11 @@
-struct BufU32 {
-    data: array<u32>,
-}
-
 @group(0) @binding(0)
-var<storage, read> mask: BufU32;
+var<storage, read> mask: array<u32>;
 
 @group(0) @binding(1)
-var<storage, read> scanned: BufU32;
+var<storage, read> scanned: array<u32>;
 
 @group(0) @binding(2)
-var<storage, read_write> output: BufU32;
+var<storage, read_write> output: array<u32>;
 
 @compute
 @workgroup_size(256)
@@ -19,8 +15,8 @@ fn main(
 ) {
     let gid = wg_id.x * 256u + local_id.x;
 
-    if mask.data[gid] == 1u {
-        let out_idx = scanned.data[gid] - 1u;
-        output.data[out_idx] = gid;
+    if mask[gid] == 1u {
+        let out_idx = scanned[gid] - 1u;
+        output[out_idx] = gid;
     }
 }

@@ -1,27 +1,23 @@
-struct BufU32 {
-    data: array<u32>,
-}
-
-struct BufI32 {
-    data: array<i32>,
-}
-
 @group(0) @binding(0)
-var<storage, read> global: BufU32;
+var<storage, read> global: array<u32>;
 
 @group(0) @binding(1)
-var<storage, read> compacted: BufU32;
+var<storage, read> compacted: array<u32>;
 
 @group(0) @binding(2)
-var<storage, read> depths: BufI32;
+var<storage, read> depths: array<i32>;
 
 @group(0) @binding(3)
-var<storage, read_write> parents: BufI32;
+var<storage, read_write> parents: array<i32>;
 
 const LBRACE = 0x7Bu;
 const RBRACE = 0x7Du;
 const LBRACKET = 0x5Bu;
 const RBRACKET = 0x5Du;
+
+fn read_byte(idx: u32) -> u32 {
+    return (global[idx / 4u] >> ((idx % 4u) * 8u)) & 0xFFu;
+}
 
 @compute
 @workgroup_size(256)
@@ -31,8 +27,8 @@ fn main(
 ) {
     let gid = wg_id.x * 256u + local_id.x;
 
-    let my_depth = depths.data[gid];
-    let my_byte = global.data[compacted.data[gid]];
+    let my_depth = depths[gid];
+    let my_byte = read_byte(compacted[gid]);
 
     var target_depth: i32;
     if my_byte == LBRACE || my_byte == LBRACKET {
@@ -44,15 +40,15 @@ fn main(
     }
 
     if target_depth <= 0 {
-        parents.data[gid] = -1;
+        parents[gid] = -1;
         return;
     }
 
     var parent = -1;
     for (var j = i32(gid) - 1; j >= 0; j--) {
-        let d = depths.data[u32(j)];
+        let d = depths[u32(j)];
         if d == target_depth {
-            let b = global.data[compacted.data[u32(j)]];
+            let b = read_byte(compacted[u32(j)]);
             if b == LBRACE || b == LBRACKET {
                 parent = j;
                 break;
@@ -60,5 +56,5 @@ fn main(
         }
     }
 
-    parents.data[gid] = parent;
+    parents[gid] = parent;
 }

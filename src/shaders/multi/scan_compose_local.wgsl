@@ -1,12 +1,8 @@
-struct FsmBuf {
-    data: array<vec3<u32>>,
-}
-
 @group(0) @binding(0)
-var<storage, read_write> data: FsmBuf;
+var<storage, read_write> data: array<vec3<u32>>;
 
 @group(0) @binding(1)
-var<storage, read_write> totals: FsmBuf;
+var<storage, read_write> totals: array<vec3<u32>>;
 
 var<workgroup> scratch: array<vec3<u32>, 256>;
 
@@ -22,7 +18,7 @@ fn main(
 ) {
     let gid = wg_id.x * 256u + local_id.x;
 
-    scratch[local_id.x] = data.data[gid];
+    scratch[local_id.x] = data[gid];
 
     workgroupBarrier();
 
@@ -40,9 +36,9 @@ fn main(
         scratch[local_id.x] = compose(left, scratch[local_id.x]);
     }
 
-    data.data[gid] = scratch[local_id.x];
+    data[gid] = scratch[local_id.x];
 
     if local_id.x == 255u {
-        totals.data[wg_id.x] = scratch[255];
+        totals[wg_id.x] = scratch[255];
     }
 }

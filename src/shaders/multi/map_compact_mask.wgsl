@@ -1,19 +1,15 @@
-struct BufU32 {
-    data: array<u32>,
-}
-
-struct FsmBuf {
-    data: array<vec3<u32>>,
-}
-
 @group(0) @binding(0)
-var<storage, read> input: BufU32;
+var<storage, read> input: array<u32>;
 
 @group(0) @binding(1)
-var<storage, read> fsm: FsmBuf;
+var<storage, read> fsm: array<vec3<u32>>;
 
 @group(0) @binding(2)
-var<storage, read_write> mask: BufU32;
+var<storage, read_write> mask: array<u32>;
+
+fn read_byte(idx: u32) -> u32 {
+    return (input[idx / 4u] >> ((idx % 4u) * 8u)) & 0xFFu;
+}
 
 @compute
 @workgroup_size(256)
@@ -23,8 +19,8 @@ fn main(
 ) {
     let gid = wg_id.x * 256u + local_id.x;
 
-    let b = input.data[gid];
-    let is_normal = fsm.data[gid][0] == 0u;
+    let b = read_byte(gid);
+    let is_normal = fsm[gid][0] == 0u;
 
     var m = 0u;
     switch b {
@@ -34,5 +30,5 @@ fn main(
         default {}
     }
 
-    mask.data[gid] = m;
+    mask[gid] = m;
 }

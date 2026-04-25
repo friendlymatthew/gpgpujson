@@ -1,34 +1,30 @@
-struct DataBuf {
-    data: array<u32>,
-}
-
 @group(0)
 @binding(0)
-var<storage, read> global: DataBuf;
-
-struct FsmBuf {
-    data: array<vec3<u32>>,
-}
+var<storage, read> global: array<u32>;
 
 @group(0)
 @binding(1)
-var<storage, read> fsm: FsmBuf;
+var<storage, read> fsm: array<vec3<u32>>;
 
 @group(0)
 @binding(2)
-var<storage, read_write> output: DataBuf;
+var<storage, read_write> output: array<u32>;
+
+fn read_byte(idx: u32) -> u32 {
+    return (global[idx / 4u] >> ((idx % 4u) * 8u)) & 0xFFu;
+}
 
 var<workgroup> scratch: array<u32, 256>;
 
 @compute
 @workgroup_size(256)
 fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
-    let b = global.data[local_id.x];
-    let is_normal = fsm.data[local_id.x][0] == 0u;
+    let b = read_byte(local_id.x);
+    let is_normal = fsm[local_id.x][0] == 0u;
 
     var mask = 0u;
     switch b {
-        case 0x7Bu, 0x7Du, 0x5Bu, 0x5Du, 0x3Au, 0x2Cu {  
+        case 0x7Bu, 0x7Du, 0x5Bu, 0x5Du, 0x3Au, 0x2Cu {
             mask = select(0u, 1u, is_normal);
         }
         default {}
@@ -53,6 +49,6 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
     }
 
     if mask == 1u {
-        output.data[scratch[local_id.x] - 1u] = local_id.x;
+        output[scratch[local_id.x] - 1u] = local_id.x;
     }
 }

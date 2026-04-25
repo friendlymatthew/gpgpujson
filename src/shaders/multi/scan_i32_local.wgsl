@@ -1,12 +1,8 @@
-struct BufI32 {
-    data: array<i32>,
-}
-
 @group(0) @binding(0)
-var<storage, read_write> data: BufI32;
+var<storage, read_write> data: array<i32>;
 
 @group(0) @binding(1)
-var<storage, read_write> totals: BufI32;
+var<storage, read_write> totals: array<i32>;
 
 var<workgroup> scratch: array<i32, 256>;
 
@@ -18,7 +14,7 @@ fn main(
 ) {
     let gid = wg_id.x * 256u + local_id.x;
 
-    scratch[local_id.x] = data.data[gid];
+    scratch[local_id.x] = data[gid];
 
     workgroupBarrier();
 
@@ -36,9 +32,9 @@ fn main(
         scratch[local_id.x] += left;
     }
 
-    data.data[gid] = scratch[local_id.x];
+    data[gid] = scratch[local_id.x];
 
     if local_id.x == 255u {
-        totals.data[wg_id.x] = scratch[255];
+        totals[wg_id.x] = scratch[255];
     }
 }

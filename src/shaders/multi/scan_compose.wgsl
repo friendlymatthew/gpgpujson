@@ -1,9 +1,5 @@
-struct FsmBuf {
-    data: array<vec3<u32>>,
-}
-
 @group(0) @binding(0)
-var<storage, read_write> data: FsmBuf;
+var<storage, read_write> data: array<vec3<u32>>;
 
 var<workgroup> scratch: array<vec3<u32>, 256>;
 
@@ -14,7 +10,7 @@ fn compose(lhs: vec3<u32>, rhs: vec3<u32>) -> vec3<u32> {
 @compute
 @workgroup_size(256)
 fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
-    scratch[local_id.x] = data.data[local_id.x];
+    scratch[local_id.x] = data[local_id.x];
 
     workgroupBarrier();
 
@@ -32,5 +28,5 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
         scratch[local_id.x] = compose(left, scratch[local_id.x]);
     }
 
-    data.data[local_id.x] = scratch[local_id.x];
+    data[local_id.x] = scratch[local_id.x];
 }
