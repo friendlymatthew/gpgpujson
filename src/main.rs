@@ -55,13 +55,16 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
         n_wg.try_into().unwrap(),
     );
 
-    let scanned_mask = gpu.read_buffer_as::<u32>(&mask_buf);
-    let struct_count = scanned_mask[padded_len - 1] as usize;
-    let struct_wg = struct_count.div_ceil(256).max(1);
-    let struct_padded = struct_wg * 256;
-
-    let depth_buf = gpu.storage_buffer_empty("depth", (struct_padded * 4) as u64);
+    let indirect_buf = gpu.indirect_buffer("indirect");
     gpu.dispatch(
+        include_str!("shaders/multi/prepare_indirect.wgsl"),
+        "main",
+        &[(&mask_buf, true), (&indirect_buf, false)],
+        1,
+    );
+
+    let depth_buf = gpu.storage_buffer_empty("depth", buf_size(4));
+    gpu.dispatch_indirect(
         include_str!("shaders/multi/map_depth.wgsl"),
         "main",
         &[
@@ -69,13 +72,13 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
             (&compact_buf, true),
             (&depth_buf, false),
         ],
-        struct_wg.try_into().unwrap(),
+        &indirect_buf,
     );
 
-    gpu.multi_scan_i32(&depth_buf, struct_padded);
+    gpu.multi_scan_i32(&depth_buf, padded_len);
 
-    let parent_buf = gpu.storage_buffer_empty("parents", (struct_padded * 4) as u64);
-    gpu.dispatch(
+    let parent_buf = gpu.storage_buffer_empty("parents", buf_size(4));
+    gpu.dispatch_indirect(
         include_str!("shaders/multi/parent_link.wgsl"),
         "main",
         &[
@@ -84,14 +87,12 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
             (&depth_buf, true),
             (&parent_buf, false),
         ],
-        struct_wg.try_into().unwrap(),
+        &indirect_buf,
     );
 
-    let tape_buf = gpu.storage_buffer_empty(
-        "tape",
-        (struct_padded * std::mem::size_of::<TapeEntry>()) as u64,
-    );
-    gpu.dispatch(
+    let tape_buf =
+        gpu.storage_buffer_empty("tape", buf_size(std::mem::size_of::<TapeEntry>()));
+    gpu.dispatch_indirect(
         include_str!("shaders/multi/assemble_tape.wgsl"),
         "main",
         &[
@@ -101,8 +102,11 @@ fn parse(gpu: &Gpu, json: &str) -> Vec<TapeEntry> {
             (&parent_buf, true),
             (&tape_buf, false),
         ],
-        struct_wg.try_into().unwrap(),
+        &indirect_buf,
     );
+
+    let struct_count =
+        gpu.read_buffer_at::<u32>(&mask_buf, ((padded_len - 1) * 4) as u64) as usize;
 
     let tape = gpu.read_buffer_as::<TapeEntry>(&tape_buf);
     tape[..struct_count].to_vec()

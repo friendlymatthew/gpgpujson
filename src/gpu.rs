@@ -101,13 +101,48 @@ impl Gpu {
         bytemuck::cast_slice(&bytes).to_vec()
     }
 
-    pub fn dispatch(
+    pub fn indirect_buffer(&self, label: &str) -> wgpu::Buffer {
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size: 12,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::INDIRECT
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
+    pub fn read_buffer_at<T: bytemuck::Pod>(&self, buffer: &wgpu::Buffer, byte_offset: u64) -> T {
+        let size = std::mem::size_of::<T>() as u64;
+        let staging = self.staging_buffer(size);
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        encoder.copy_buffer_to_buffer(buffer, byte_offset, &staging, 0, size);
+        self.queue.submit(Some(encoder.finish()));
+
+        let slice = staging.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+
+        self.device.poll(wgpu::Maintain::Wait);
+        rx.recv().unwrap().unwrap();
+
+        let data = slice.get_mapped_range();
+        *bytemuck::from_bytes(&data)
+    }
+
+    fn build_pipeline(
         &self,
         shader_src: &str,
         entry_point: &str,
         buffers: &[(&wgpu::Buffer, bool)],
-        workgroups: u32,
-    ) {
+    ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let module = self
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -171,6 +206,18 @@ impl Gpu {
             entries: &bind_group_entries,
         });
 
+        (pipeline, bind_group)
+    }
+
+    pub fn dispatch(
+        &self,
+        shader_src: &str,
+        entry_point: &str,
+        buffers: &[(&wgpu::Buffer, bool)],
+        workgroups: u32,
+    ) {
+        let (pipeline, bind_group) = self.build_pipeline(shader_src, entry_point, buffers);
+
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -180,6 +227,29 @@ impl Gpu {
             cpass.set_pipeline(&pipeline);
             cpass.set_bind_group(0, &bind_group, &[]);
             cpass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+    }
+
+    pub fn dispatch_indirect(
+        &self,
+        shader_src: &str,
+        entry_point: &str,
+        buffers: &[(&wgpu::Buffer, bool)],
+        indirect: &wgpu::Buffer,
+    ) {
+        let (pipeline, bind_group) = self.build_pipeline(shader_src, entry_point, buffers);
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        {
+            let mut cpass = encoder.begin_compute_pass(&Default::default());
+            cpass.set_pipeline(&pipeline);
+            cpass.set_bind_group(0, &bind_group, &[]);
+            cpass.dispatch_workgroups_indirect(indirect, 0);
         }
 
         self.queue.submit(Some(encoder.finish()));
